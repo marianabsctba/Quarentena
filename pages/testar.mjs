@@ -80,7 +80,7 @@ for (const c of curso.casos) {
       (tempos[p.tool] ||= []).push(cache[p.tool].ms);
     }
     const saida = cache[p.tool].saida.toLowerCase();
-    const alvo = p.resposta_tipo === "sha256" ? c.sha256 : (p.contem || p.resposta).toLowerCase();
+    const alvo = p.resposta_tipo === "sha256" ? c.sha256 : [].concat(p.contem || p.resposta)[0].toLowerCase();
     conferidos++;
     if (!saida.includes(alvo)) {
       achados.push(`${c.id} ${p.id} [${p.tool}] alvo "${alvo}" fora da saida (${cache[p.tool].saida.length} bytes)`);
@@ -117,6 +117,11 @@ for (const cmd of [
   "cd /casos/caso011 && strace -e prctl ./svc_helper --arm",
   "cd /casos/caso013 && hostname FIN-SRV-01 && ./licenca_check --arm; hostname panthera",
   "cd /casos/caso024 && ./boot_tool; ls /tmp",
+  "cd /casos/caso008 && grep '^STAGE2=' atualizacao_sistema.sh | cut -d'\"' -f2 | base64 -d | base64 -d | cut -c1-90",
+  "cd /casos/caso017 && python3 dga.py 1337 | head -1",
+  "cd /casos/caso029 && tshark -r proto.pcap -T fields -e tcp.payload 2>/dev/null | head -1 | cut -c9- | xxd -r -p; echo",
+  "python3 -c \"print(''.join(chr(b^((0x7f+7*i)\&255)) for i,b in enumerate(bytes.fromhex('2cd2ccd3 de90938a dfcab1bc e9f5ce9b 8a9a9b60 6e713443 150050'))))\"",
+  "python3 -c \"from functools import reduce as r; print([n for n in ['getenv','system','puts','open','execve','malloc','fopen'] if r(lambda h,c:(h*33+c)\&0xffffffff,n.encode(),5381)==0xff8760ae])\"",
   "echo aGVsbG8= | base64 -d; echo; python3 -c 'print(1+1)'; ip link | grep -c eth",
 ]) {
   const r = await terminal(cmd);

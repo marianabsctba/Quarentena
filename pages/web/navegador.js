@@ -100,15 +100,21 @@ window.QuarentenaNavegador = (function () {
     })]);
   }
 
+  // Acento, maiuscula e espaco nao mudam a resposta: nao, NÃO, 1f8b, 1f 8b.
+  function normalizar(t) {
+    return t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "").toLowerCase();
+  }
+
   function conferir(c, passoId, resposta) {
     var p = c.passos.filter(function (x) { return x.id === passoId; })[0];
     if (!p) return { ok: false, msg: "passo desconhecido." };
-    var dado = (resposta || "").trim().toLowerCase();
+    var dado = normalizar(resposta || "");
     if (p.resposta_tipo === "sha256") {
       return dado === c.sha256 ? { ok: true, msg: p.sucesso }
         : { ok: false, msg: "Não bate com o hash real da amostra. Rode 'sha256sum' e cole exatamente." };
     }
-    var ok = dado === p.resposta.toLowerCase() || (p.contem && dado.indexOf(p.contem.toLowerCase()) >= 0);
+    var contem = [].concat(p.contem || []);
+    var ok = dado === normalizar(p.resposta) || contem.some(function (x) { return dado.indexOf(normalizar(x)) >= 0; });
     return ok ? { ok: true, msg: p.sucesso } : { ok: false, msg: "Ainda não. Use a ferramenta indicada e olhe com calma." };
   }
 

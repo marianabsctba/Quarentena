@@ -32,8 +32,8 @@ SEM_GHIDRA = {
     ("caso001", "p6"): {
         "titulo": "A chave na unha",
         "tool": "terminal",
-        "instr": "Hora de achar a chave na unha. A decrypt_strings faz XOR com o símbolo KEY. No Terminal, ache o endereço dele com objdump -t fatura_outubro | grep KEY e leia a seção com objdump -s -j .rodata fatura_outubro. Qual o valor (em hex) nesse endereço?",
-        "dica": "O KEY está no começo do .rodata: é o primeiro byte da primeira linha do dump.",
+        "instr": "Hora de achar a chave na unha. A decrypt_strings faz XOR com o símbolo KEY. No Terminal, ache o endereço dele com objdump -t fatura_outubro | grep KEY e leia a seção com objdump -s -j .rodata fatura_outubro. O primeiro bloco da linha é o endereço. Qual o valor do byte que está nesse endereço?",
+        "dica": "A linha sai assim: 804a000 2a000000 ... O primeiro bloco é o endereço, não é dado. O KEY é o primeiro par de dígitos do segundo bloco.",
         "sucesso": "0x2A. Achou a chave lendo o binário de verdade. Isso é engenharia reversa: o programa tentou esconder, você leu assim mesmo.",
     },
     ("caso003", "p4"): {"tool": "elf"},
@@ -44,16 +44,16 @@ SEM_GHIDRA = {
     },
     ("caso020", "p5"): {
         "tool": "disasm",
-        "instr": "Abra o Desmontador. Sem nomes, procure o laço de decodificação (um xor entre registradores). Logo antes dele, a chave é indexada: o compilador trocou 'i % N' por um 'and' com N-1. De quantos bytes é a chave?",
+        "instr": "Abra o Disassembler. Sem nomes, procure o laço de decodificação (um xor entre registradores). Logo antes dele, a chave é indexada: o compilador trocou 'i % N' por um 'and' com N-1. De quantos bytes é a chave?",
         "dica": "Procure 'and edx,0x3' perto do xor. And com 3 é o mesmo que resto da divisão por 4.",
     },
     ("caso025", "p3"): {
         "tool": "disasm",
-        "instr": "No Desmontador, ache a chamada a process_vm_writev: o primeiro argumento é o PID alvo. Nesta amostra didática, de onde vem esse PID (qual função é chamada logo antes)?",
+        "instr": "No Disassembler, ache a chamada a process_vm_writev: o primeiro argumento é o PID alvo. Nesta amostra didática, de onde vem esse PID (qual função é chamada logo antes)?",
     },
 }
-TROCAS = [("Abra o Desmontador (ou Ghidra).", "Abra o Desmontador."),
-          ("O algoritmo (visível no Ghidra) é", "O algoritmo (visível no Desmontador) é"),
+TROCAS = [("Abra o Disassembler (ou Ghidra).", "Abra o Disassembler."),
+          ("O algoritmo (visível no Ghidra) é", "O algoritmo (visível no Disassembler) é"),
           ("você renomeia funções no Ghidra até", "você renomeia funções no decompilador até"),
           ("antes de abrir o Ghidra, a tabela", "antes de abrir o desmontador, a tabela"),
           ("antes mesmo de abrir no Ghidra", "antes mesmo de desmontar"),

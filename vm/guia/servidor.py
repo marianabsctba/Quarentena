@@ -17,6 +17,7 @@ import os
 import shutil
 import subprocess
 import hashlib
+import unicodedata
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import curso
@@ -126,6 +127,12 @@ def abrir_gui(caso_id, tool):
     return False, "não achei '" + sugestao + "' instalado. Na VM final ele estará; aqui pode faltar."
 
 
+def normalizar(texto):
+    """Acento, maiuscula e espaco nao mudam a resposta: nao, NÃO, 1f8b, 1f 8b."""
+    sem_acento = unicodedata.normalize("NFD", texto)
+    return "".join(c for c in sem_acento if not c.isspace() and not unicodedata.combining(c)).lower()
+
+
 def conferir(caso_id, passo_id, resposta):
     p = curso.achar_passo(caso_id, passo_id)
     if not p:
@@ -139,10 +146,11 @@ def conferir(caso_id, passo_id, resposta):
         if dado.lower() == real:
             return True, p["sucesso"]
         return False, "Não bate com o hash real da amostra. Rode 'sha256sum' e cole exatamente."
-    low = dado.lower()
-    ok = low == p["resposta"].lower()
+    low = normalizar(dado)
+    ok = low == normalizar(p["resposta"])
     if not ok and p.get("contem"):
-        ok = p["contem"].lower() in low
+        contem = p["contem"] if isinstance(p["contem"], list) else [p["contem"]]
+        ok = any(normalizar(c) in low for c in contem)
     if ok:
         return True, p["sucesso"]
     return False, "Ainda não. Use a ferramenta indicada e olhe com calma."
