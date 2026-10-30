@@ -24,14 +24,15 @@ import curso  # noqa: E402
 
 INTRO_FALAS = {
     "Essa VM é isolada: sem rede de verdade, com snapshot salvo. Se bagunçar, a gente volta o snapshot e finge que nada aconteceu. Como na vida.":
-    "Essa VM roda dentro da aba do seu navegador, sem rede nenhuma. Se bagunçar, recarrega a página: volta tudo ao zero e a gente finge que nada aconteceu. Como na vida.",
+    "Essa VM roda dentro da aba do seu navegador, sem rede nenhuma. Se bagunçar, recarrega a página: o laboratório volta ao zero, seu progresso fica salvo, e a gente finge que nada aconteceu. Como na vida.",
 }
 # O Ghidra nao roda no navegador: cada passo dele volta com a ferramenta que
 # responde a mesma pergunta aqui, conferida nas amostras de 32 bits.
 SEM_GHIDRA = {
     ("caso001", "p6"): {
+        "titulo": "A chave na unha",
         "tool": "terminal",
-        "instr": "O Ghidra fica na VM, mas dá pra achar a chave na unha. A decrypt_strings faz XOR com o símbolo KEY. No Terminal, ache o endereço dele com objdump -t fatura_outubro | grep KEY e leia a seção com objdump -s -j .rodata fatura_outubro. Qual o valor (em hex) nesse endereço?",
+        "instr": "Hora de achar a chave na unha. A decrypt_strings faz XOR com o símbolo KEY. No Terminal, ache o endereço dele com objdump -t fatura_outubro | grep KEY e leia a seção com objdump -s -j .rodata fatura_outubro. Qual o valor (em hex) nesse endereço?",
         "dica": "O KEY está no começo do .rodata: é o primeiro byte da primeira linha do dump.",
         "sucesso": "0x2A. Achou a chave lendo o binário de verdade. Isso é engenharia reversa: o programa tentou esconder, você leu assim mesmo.",
     },
@@ -51,27 +52,20 @@ SEM_GHIDRA = {
         "instr": "No Desmontador, ache a chamada a process_vm_writev: o primeiro argumento é o PID alvo. Nesta amostra didática, de onde vem esse PID (qual função é chamada logo antes)?",
     },
 }
-# (caso, passo, campo): texto que nao batia com a saida real no Linux do navegador.
-AJUSTES = {
-    # Sob strace o ptrace(TRACEME) falha: o anti-debug dispara e o arquivo nunca e criado.
-    ("caso001", "p8", "tool"): "terminal",
-    ("caso001", "p8", "instr"): "Análise estática conta a intenção; a dinâmica confirma. Na Sandbox (strace) ela percebe o rastreador e encerra: é o anti-debug que você achou. Então rode sem coleira, no Terminal: ./fatura_outubro --arm e depois ls /tmp.",
-    ("caso001", "p8", "dica"): "A amostra é inofensiva. Rode ./fatura_outubro --arm no Terminal e liste o /tmp. Compare com a Sandbox, onde ela desiste antes de criar qualquer coisa.",
-    # Aqui tambem o ptrace dispara primeiro: o strace nao chega a mostrar o product_name.
-    ("caso020", "p7", "instr"): "Rode na Sandbox (strace) em modo --arm e observe: ele encerra calado, sem tocar em nada. Além do ptrace, ele carrega a checagem do product_name, feita pra se recusar a agir dentro de uma VM.",
-    ("caso020", "p7", "dica"): "O product_name existe pra ele perceber que está numa VM. O nome da técnica combina 'anti' com onde você está rodando.",
-}
 TROCAS = [("Abra o Desmontador (ou Ghidra).", "Abra o Desmontador."),
           ("O algoritmo (visível no Ghidra) é", "O algoritmo (visível no Desmontador) é"),
+          ("você renomeia funções no Ghidra até", "você renomeia funções no decompilador até"),
+          ("antes de abrir o Ghidra, a tabela", "antes de abrir o desmontador, a tabela"),
+          ("antes mesmo de abrir no Ghidra", "antes mesmo de desmontar"),
           # A musl de 32 bits chama open, nao openat.
           ("open/openat", "open"), ("openat", "open")]
-HTML_TROCAS = [("rede: FakeNet", "rede: desligada"), ("snapshot: salvo", "recarregar: volta ao zero"),
+HTML_TROCAS = [("rede: FakeNet", "rede: desligada"), ("snapshot: salvo", "progresso: salvo"),
                ("Não consegui falar com o servidor local. Rode: python3 servidor.py",
                 "Não consegui falar com o Linux do laboratório. Recarregue a página."),
                ("Não consegui falar com o servidor local. Ele está rodando? (python3 servidor.py)",
                 "Não consegui falar com o Linux do laboratório. Recarregue a página.")]
 # Ferramenta que o passo ajustado passa a pedir e que o caso nao listava.
-TOOLS_EXTRAS = {"caso001": ["terminal"], "caso025": ["disasm"]}
+TOOLS_EXTRAS = {"caso025": ["disasm"]}
 
 
 def hashes():
@@ -94,10 +88,6 @@ def montar_curso():
             for campo in ("instr", "dica", "sucesso"):
                 for de, para in TROCAS:
                     p[campo] = p[campo].replace(de, para)
-            for campo in ("tool", "instr", "dica", "sucesso"):
-                novo = AJUSTES.get((c["id"], p["id"], campo))
-                if novo:
-                    p[campo] = novo
             passos.append(p)
         tools = [dict(curso.TOOLS[t], id=t) for t in c["tools"] + TOOLS_EXTRAS.get(c["id"], []) if t != "ghidra"]
         casos.append({"id": c["id"], "nome": c["nome"], "nivel": c["nivel"],
@@ -106,6 +96,8 @@ def montar_curso():
                       "tools": tools, "passos": passos})
     intro = dict(curso.INTRO)
     intro["falas"] = [INTRO_FALAS.get(f, f) for f in intro["falas"]]
+    # Nenhum texto do jogo pode mandar o aluno pra uma ferramenta que nao existe aqui.
+    assert "ghidra" not in json.dumps(casos, ensure_ascii=False).lower()
     return {"intro": intro, "casos": casos}
 
 

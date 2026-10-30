@@ -34,9 +34,10 @@ overlay, API hashing) para o estudante treinar. Nunca malware de verdade.
 ```
 
 Tudo roda no seu navegador: não há servidor, e o site só entrega os arquivos. O
-primeiro acesso baixa cerca de 25 MB e depois fica em cache. Recarregar a página
-volta o laboratório ao zero. As respostas são conferidas na própria página, então
-quem quiser consegue ver o gabarito no código: é um jogo de estudo.
+primeiro acesso baixa cerca de 25 MB e depois fica em cache. O progresso fica salvo
+neste navegador; recarregar a página limpa só o Linux do laboratório. As respostas
+são conferidas na própria página, então quem quiser consegue ver o gabarito no
+código: é um jogo de estudo.
 
 ## Estrutura
 

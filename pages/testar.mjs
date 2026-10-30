@@ -86,6 +86,13 @@ for (const c of curso.casos) {
       achados.push(`${c.id} ${p.id} [${p.tool}] alvo "${alvo}" fora da saida (${cache[p.tool].saida.length} bytes)`);
     }
   }
+  // Os bytes que o CyberChef recebe pronto precisam ser os da amostra de verdade.
+  for (const p of c.passos) {
+    const hex = p.cyberchef && p.cyberchef.entrada;
+    if (!hex) continue;
+    const amostra = Buffer.from(await emu.read_file(`/casos/${c.id}/${c.arquivo}`));
+    if (!amostra.includes(Buffer.from(hex, "hex"))) achados.push(`${c.id} ${p.id} bytes do CyberChef fora da amostra`);
+  }
   console.log(`${c.id} ok (${seg()}s)`);
 }
 console.log(`\npassos: ${total}; com ferramenta automatica: ${conferidos}`);

@@ -11,7 +11,7 @@ window.QuarentenaNavegador = (function () {
   function status(txt, ok) {
     if (!aviso) {
       aviso = document.createElement("div");
-      aviso.style.cssText = "position:fixed;right:12px;bottom:12px;z-index:50;padding:7px 12px;border-radius:6px;" +
+      aviso.style.cssText = "position:fixed;right:12px;bottom:64px;z-index:50;padding:7px 12px;border-radius:6px;" +
         "background:#120a10;border:1px solid #ff2f9a;color:#ffc4e3;font:12px monospace";
       document.body.appendChild(aviso);
     }
@@ -148,16 +148,51 @@ window.QuarentenaNavegador = (function () {
     });
   }
 
+  function abrirCyberChef(c, area) {
+    var p = c.passos.filter(function (x) { return x.cyberchef; })[0];
+    var site = "<a style='color:#ff79c0' target='_blank' rel='noopener' href='https://gchq.github.io/CyberChef/'>Abrir o CyberChef</a>";
+    var caixa = document.createElement("div");
+    caixa.style.cssText = "padding:14px;font-size:14px;line-height:1.6;color:#e8dfe4";
+    if (!p) {
+      caixa.innerHTML = "O <b>CyberChef</b> decodifica dados: você cola no Input, escolhe a receita e lê o resultado no Output. " +
+        "O veterano diz o que colar em cada passo.<br><br>" + site;
+      area.innerHTML = ""; area.appendChild(caixa);
+      return;
+    }
+    var cc = p.cyberchef, lista = document.createElement("ol");
+    lista.style.cssText = "margin:8px 0 0 20px;padding:0";
+    function item(html) { var li = document.createElement("li"); li.style.marginBottom = "8px"; li.innerHTML = html; lista.appendChild(li); return li; }
+    if (cc.entrada) {
+      var li = item("Copie os bytes embaralhados da amostra:");
+      var txt = document.createElement("textarea");
+      txt.readOnly = true; txt.rows = 2; txt.value = cc.entrada;
+      txt.style.cssText = "display:block;width:100%;margin:6px 0;background:#08060a;color:#ffd9ec;border:1px solid #ff2f9a;font:12px monospace;padding:6px;box-sizing:border-box";
+      var bt = document.createElement("button");
+      bt.textContent = "Copiar";
+      bt.style.cssText = "background:#ff2f9a;color:#000;border:0;border-radius:4px;padding:3px 12px;cursor:pointer";
+      bt.onclick = function () {
+        txt.select();
+        (navigator.clipboard ? navigator.clipboard.writeText(cc.entrada) : Promise.reject()).then(function () {
+          bt.textContent = "Copiado";
+        }).catch(function () { bt.textContent = "Use Ctrl+C"; });
+      };
+      li.appendChild(txt); li.appendChild(bt);
+    } else {
+      item(cc.origem);
+    }
+    item(site + " (outra aba). Cole no quadro Input, à direita.");
+    cc.receita.forEach(item);
+    item("O resultado aparece no quadro Output, embaixo à direita. Leve a resposta pro campo aqui do jogo.");
+    caixa.innerHTML = "<b>O CyberChef desfaz o embaralhamento pra você.</b>";
+    caixa.appendChild(lista);
+    area.innerHTML = ""; area.appendChild(caixa);
+  }
+
   // Ferramentas que no VM abrem janela: aqui ficam na propria tela.
   function abrir(casoId, tool, area) {
     var c = caso(casoId);
     if (tool === "terminal" || tool === "yara") { abrirTerminal(c, area); return true; }
-    if (tool === "xor") {
-      area.innerHTML = "<div class='abrir-dica'>O <b>CyberChef</b> abre em outra aba e roda inteiro no navegador." +
-        "<br><br><a style='color:#ff79c0' target='_blank' rel='noopener' href='https://gchq.github.io/CyberChef/'>Abrir o CyberChef</a>" +
-        "<br><br>Pra pegar os bytes da amostra, use o Terminal ou o Visor Hex.</div>";
-      return true;
-    }
+    if (tool === "xor") { abrirCyberChef(c, area); return true; }
     return false;
   }
 

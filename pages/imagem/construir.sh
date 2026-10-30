@@ -68,7 +68,8 @@ export PS1='analista@panthera:\w\$ '
 EOF
 cat > "$ROOTFS/etc/motd" <<'EOF'
 Panthera Quarentena, setor de Engenharia Reversa. Linux real, dentro da sua aba.
-Sem rede. Recarregar a pagina volta tudo ao zero. As amostras estao em /casos.
+Sem rede. Recarregar a pagina limpa este Linux; o progresso do jogo fica salvo.
+As amostras estao em /casos.
 EOF
 : > "$ROOTFS/etc/resolv.conf"
 chroot "$ROOTFS" /bin/sh -c '

@@ -94,10 +94,12 @@
   .ferramenta .freal{font-family:var(--mono);font-size:11.5px;color:var(--azul);margin-top:1px}
   .ferramenta .foque{font-size:13px;color:var(--texto);margin-top:6px;line-height:1.45}
 
-  .trilha{display:flex;gap:8px;padding:10px 16px;border-top:1px solid var(--borda);overflow-x:auto}
+  .trilha{display:flex;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid var(--borda);overflow-x:auto;scrollbar-width:thin;scrollbar-color:var(--borda) transparent}
+  .trilha-conta{flex:none;font-family:var(--mono);font-size:11px;color:var(--fraca);padding-right:4px}
   .passoc{flex:none;font-family:var(--mono);font-size:11px;padding:6px 11px;border:1px solid var(--borda);border-radius:999px;color:var(--fraca);white-space:nowrap;background:transparent;cursor:pointer}
   .passoc.atual{border-color:var(--rosa);color:var(--rosaclaro)}
   .passoc.feito{border-color:var(--verde);color:var(--verde)}
+  .passoc.atual,.passoc.atual.feito{border-color:var(--rosa);box-shadow:0 0 0 1px var(--rosa)}
 
   .carregando{position:absolute;inset:0;z-index:4;display:grid;place-items:center;color:var(--fraca);font-family:var(--mono);font-size:13px}
   @media(max-width:820px){.area{grid-template-columns:1fr}.dock{flex-direction:row;flex-wrap:wrap;border-right:none;border-bottom:1px solid var(--borda)}.dock-tit{width:100%}.guia{flex-direction:column}.ferramenta{width:auto}}
@@ -167,6 +169,32 @@
   var $ = function (s) { return document.querySelector(s); };
   var CURSO = null, CASO = null, casoIdx = 0, passo = 0, feitos = {}, aberta = null, introI = 0;
 
+  // ---------- progresso salvo neste navegador ----------
+  var CHAVE_PROGRESSO = "panthera-quarentena-progresso";
+  var prog = lerProgresso();
+  function lerProgresso() {
+    var p = null;
+    try { p = JSON.parse(localStorage.getItem(CHAVE_PROGRESSO)); } catch (e) {}
+    p = p && typeof p === "object" ? p : {};
+    if (!p.feitos || typeof p.feitos !== "object") p.feitos = {};
+    return p;
+  }
+  function salvarProgresso() {
+    try { localStorage.setItem(CHAVE_PROGRESSO, JSON.stringify(prog)); } catch (e) {}
+  }
+  function casoFechado(c) {
+    var f = prog.feitos[c.id] || {};
+    return c.passos.every(function (p) { return f[p.id]; });
+  }
+  function temProgresso() {
+    return Object.keys(prog.feitos).some(function (id) { return Object.keys(prog.feitos[id]).length > 0; });
+  }
+  function primeiroPendente(c) {
+    var f = prog.feitos[c.id] || {};
+    for (var i = 0; i < c.passos.length; i++) if (!f[c.passos[i].id]) return i;
+    return 0;
+  }
+
   function api(path, body) {
     // Na versao do Pages nao ha servidor: o Linux roda na propria aba (navegador.js).
     if (window.QuarentenaNavegador) return window.QuarentenaNavegador.api(path, body);
@@ -179,6 +207,21 @@
   function toolById(id) { var t = CASO.tools; for (var i = 0; i < t.length; i++) if (t[i].id === id) return t[i]; return t[0]; }
 
   // ---------- intro (primeiro dia) ----------
+  function mostrarVolta() {
+    var fechados = CURSO.casos.filter(casoFechado).length;
+    $("#falaMundo").textContent = "Voltou. Sua pilha está do jeito que você deixou: " + fechados + " de " + CURSO.casos.length + " casos fechados.";
+    $("#btnMundo").textContent = "Continuar de onde parei";
+    $("#btnMundo").onclick = entrarEstacao;
+    var z = document.createElement("button");
+    z.textContent = "Recomeçar do zero";
+    z.style.cssText = "display:block;margin:10px auto 0;background:none;border:0;color:inherit;opacity:.7;font:inherit;font-size:12px;cursor:pointer;text-decoration:underline";
+    z.onclick = function () {
+      if (!window.confirm("Apagar todo o seu progresso neste navegador?")) return;
+      try { localStorage.removeItem(CHAVE_PROGRESSO); } catch (e) {}
+      location.reload();
+    };
+    $("#btnMundo").parentNode.insertBefore(z, $("#btnMundo").nextSibling);
+  }
   function mostrarIntro() {
     var falas = CURSO.intro.falas;
     $("#falaMundo").textContent = falas[introI];
@@ -244,6 +287,11 @@
     $("#perguntaT").textContent = p.pergunta;
     $("#retorno").textContent = ""; $("#retorno").className = "retorno";
     $("#resp").value = ""; $("#resp").disabled = false;
+    prog.caso = CASO.id; prog.passo = p.id; salvarProgresso();
+    if (feitos[p.id]) {
+      $("#retorno").className = "retorno ok"; $("#retorno").textContent = "Você já resolveu este passo.";
+      botaoProximo($("#retorno"));
+    }
     setFerrCard(f);
     marcarDock(null, p.tool);
     $("#toolArea").innerHTML = "<div class='abrir-dica'>O veterano pediu: abra o <b>" + f.nome + "</b> na barra à esquerda" + (f.modo === "abrir" ? " (abre o programa de verdade)" : " (mostra a saída aqui)") + " e siga a instrução.</div>";
@@ -252,14 +300,35 @@
 
   function montarTrilha() {
     var t = $("#trilha"); t.innerHTML = "";
+    var resolvidos = CASO.passos.filter(function (p) { return feitos[p.id]; }).length;
+    var conta = document.createElement("span"); conta.className = "trilha-conta";
+    conta.textContent = resolvidos + " de " + CASO.passos.length;
+    t.appendChild(conta);
     CASO.passos.forEach(function (p, i) {
       var b = document.createElement("button"), cls = "passoc";
       if (i === passo) cls += " atual";
-      if (feitos[i]) cls += " feito";
-      b.className = cls; b.textContent = (i + 1) + ". " + p.titulo;
+      if (feitos[p.id]) cls += " feito";
+      b.className = cls; b.textContent = (feitos[p.id] ? "✓ " : (i + 1) + ". ") + p.titulo;
+      if (i === passo) b.setAttribute("aria-current", "step");
       b.onclick = function () { carregarPasso(i); };
       t.appendChild(b);
     });
+    var atual = t.querySelector(".atual");
+    if (atual) t.scrollLeft = atual.offsetLeft - t.offsetLeft - (t.clientWidth - atual.offsetWidth) / 2;
+  }
+
+  function botaoProximo(ret) {
+    var b = document.createElement("button"); b.className = "btn-prox";
+    if (passo + 1 < CASO.passos.length) {
+      b.textContent = "Próximo passo  >";
+      b.onclick = function () { carregarPasso(passo + 1); };
+    } else if (casoIdx + 1 < CURSO.casos.length) {
+      b.textContent = "Próximo caso  >>";
+      b.onclick = function () { carregarCaso(casoIdx + 1); };
+    } else {
+      return;
+    }
+    ret.appendChild(document.createElement("br")); ret.appendChild(b);
   }
 
   function responder() {
@@ -270,16 +339,8 @@
       if (r.ok) {
         ret.className = "retorno ok"; ret.textContent = r.msg;
         $("#resp").disabled = true;
-        feitos[passo] = true; montarTrilha();
-        if (passo + 1 < CASO.passos.length) {
-          var b = document.createElement("button"); b.className = "btn-prox"; b.textContent = "Próximo passo  >";
-          b.onclick = function () { carregarPasso(passo + 1); };
-          ret.appendChild(document.createElement("br")); ret.appendChild(b);
-        } else if (casoIdx + 1 < CURSO.casos.length) {
-          var bc = document.createElement("button"); bc.className = "btn-prox"; bc.textContent = "Próximo caso  >>";
-          bc.onclick = function () { carregarCaso(casoIdx + 1); };
-          ret.appendChild(document.createElement("br")); ret.appendChild(bc);
-        }
+        feitos[CASO.passos[passo].id] = true; salvarProgresso(); montarTrilha(); montarCasos();
+        botaoProximo(ret);
       } else {
         ret.className = "retorno erro"; ret.textContent = r.msg;
       }
@@ -291,25 +352,35 @@
   function montarCasos() {
     var s = $("#selCaso"); s.innerHTML = "";
     CURSO.casos.forEach(function (c, i) {
-      var o = document.createElement("option"); o.value = i; o.textContent = c.nome + "  ·  " + c.nivel; s.appendChild(o);
+      var o = document.createElement("option"); o.value = i; o.textContent = (casoFechado(c) ? "✓ " : "") + c.nome + "  ·  " + c.nivel; s.appendChild(o);
     });
     s.value = casoIdx;
     s.onchange = function () { carregarCaso(+s.value); };
   }
-  function carregarCaso(idx) {
-    casoIdx = idx; CASO = CURSO.casos[idx]; passo = 0; feitos = {}; aberta = null;
+  function carregarCaso(idx, n) {
+    casoIdx = idx; CASO = CURSO.casos[idx]; passo = 0; aberta = null;
+    feitos = prog.feitos[CASO.id] || (prog.feitos[CASO.id] = {});
     $("#selCaso").value = idx;
     $("#nomeArq").textContent = CASO.arquivo;
     $("#origemArq").textContent = CASO.origem;
     montarDock();
-    carregarPasso(0);
+    carregarPasso(n === undefined ? primeiroPendente(CASO) : n);
   }
   function entrarEstacao() {
     $("#estacao").classList.add("on");
     $("#mundo").style.display = "none";
     rodando3d = false;
-    montarCasos();
-    carregarCaso(casoIdx);
+    if (!CASO.iniciado) {
+      // Primeira entrada desde que a pagina abriu: volta exatamente pro passo salvo.
+      CASO.iniciado = true;
+      var salvo = -1;
+      CASO.passos.forEach(function (p, i) { if (p.id === prog.passo) salvo = i; });
+      montarCasos();
+      carregarCaso(casoIdx, salvo >= 0 ? salvo : undefined);
+    } else {
+      montarCasos();
+      carregarCaso(casoIdx, passo);
+    }
     setTimeout(function () { $("#resp").focus(); }, 80);
   }
   function voltarSala() {
@@ -399,9 +470,12 @@
   // ---------- boot ----------
   if (window.THREE) iniciar3D(); else if (aviso) aviso.textContent = "3D indisponível; o resto funciona.";
   api("/api/curso").then(function (c) {
-    CURSO = c; casoIdx = 0; CASO = c.casos[0];
+    CURSO = c; casoIdx = 0;
+    c.casos.forEach(function (x, i) { if (x.id === prog.caso) casoIdx = i; });
+    CASO = c.casos[casoIdx];
     $("#quemFala").textContent = CURSO.intro.titulo;
-    introI = 0; mostrarIntro();
+    introI = 0;
+    if (temProgresso()) mostrarVolta(); else mostrarIntro();
   }).catch(function () {
     $("#falaMundo").textContent = "Não consegui falar com o servidor local. Rode: python3 servidor.py";
     $("#btnMundo").textContent = "tentar de novo"; $("#btnMundo").onclick = function () { location.reload(); };

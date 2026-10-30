@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # Gera a fonte C da amostra didatica do Caso 020 (avancada) - INOFENSIVA.
 #
-# Sobe a dificuldade em relacao ao Caso 020:
+# Sobe a dificuldade em relacao aos casos anteriores:
 #   - XOR de CHAVE MULTI-BYTE (4 bytes "BSC!"), nao mais 1 byte;
 #   - checagem de ANTI-VM (le o nome do produto em /sys .../dmi), alem do
 #     anti-debug com ptrace;
