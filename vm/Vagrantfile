@@ -1,0 +1,81 @@
+# Vagrantfile do Quarentena.
+# Sobe uma VM Ubuntu 22.04 com desktop grafico (XFCE) e roda o provision.sh
+# (ferramentas reais de engenharia reversa + o curso). Em um comando:
+#
+#     cd vm && vagrant up
+#
+# Depois da primeira vez, reinicie pra cair no desktop grafico:
+#     vagrant reload
+#
+# Provider padrao: VirtualBox. Para VMware Desktop/Fusion, instale o plugin
+# vagrant-vmware-desktop e rode: vagrant up --provider vmware_desktop
+# (precisa de uma box compativel; a bento/ubuntu-22.04 publica as duas).
+#
+# A pasta vm/ (este diretorio) e sincronizada em /vagrant dentro da VM, e o
+# provisionamento copia tudo pra ~/quarentena pra VM ficar auto-contida.
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/ubuntu-22.04"   # mantida p/ VirtualBox e VMware
+  config.vm.hostname = "quarentena"
+  config.vm.synced_folder ".", "/vagrant"
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.name = "Quarentena"
+    vb.gui = true        # precisamos da janela grafica (Ghidra, Wireshark, navegador)
+    vb.memory = 4096     # Ghidra pede folga de RAM
+    vb.cpus = 2          # 2+ CPUs (o caso de anti-sandbox do curso checa isso)
+  end
+
+  config.vm.provider "vmware_desktop" do |vm|
+    vm.gui = true
+    vm.memory = 4096
+    vm.cpus = 2
+  end
+
+  # Provisionamento (roda uma vez, como root). Heredoc com aspas = literal,
+  # sem interpolacao do Ruby, pra o shell abaixo ir exatamente como escrito.
+  config.vm.provision "shell", inline: <<-'SHELL'
+    set -e
+    export DEBIAN_FRONTEND=noninteractive
+
+    echo "[vagrant] (1/3) Desktop grafico XFCE + navegador..."
+    apt-get update -y
+    apt-get install -y xfce4 xfce4-terminal lightdm firefox
+    # autologin do usuario 'vagrant' e boot em modo grafico
+    mkdir -p /etc/lightdm/lightdm.conf.d
+    printf '[Seat:*]\nautologin-user=vagrant\nuser-session=xfce\n' \
+      > /etc/lightdm/lightdm.conf.d/50-quarentena.conf
+    systemctl set-default graphical.target
+
+    echo "[vagrant] (2/3) Copiando o Quarentena pra ~vagrant/quarentena..."
+    rm -rf /home/vagrant/quarentena
+    cp -r /vagrant /home/vagrant/quarentena
+    rm -rf /home/vagrant/quarentena/.vagrant
+    chown -R vagrant:vagrant /home/vagrant/quarentena
+
+    echo "[vagrant] (3/3) Rodando o provision.sh (ferramentas reais + amostras)..."
+    sudo -u vagrant -H bash /home/vagrant/quarentena/provision.sh || \
+      echo "[vagrant] provision.sh terminou com avisos (veja acima)."
+
+    # atalho na area de trabalho pra iniciar o jogo
+    mkdir -p /home/vagrant/Desktop
+    cat > /home/vagrant/Desktop/Quarentena.desktop <<'DESK'
+[Desktop Entry]
+Type=Application
+Name=Quarentena
+Comment=Primeiro dia de estagio em engenharia reversa (Panthera Quarentena)
+Exec=bash /home/vagrant/quarentena/guia/iniciar.sh
+Terminal=true
+Icon=utilities-terminal
+DESK
+    chmod +x /home/vagrant/Desktop/Quarentena.desktop
+    chown -R vagrant:vagrant /home/vagrant/Desktop
+
+    echo "============================================================"
+    echo "[vagrant] Pronto. Rode 'vagrant reload' pra cair no desktop."
+    echo "          No desktop: clique no atalho 'Quarentena' ou rode"
+    echo "          bash ~/quarentena/guia/iniciar.sh"
+    echo "          Para a aula: snapshot + desligar a rede da VM."
+    echo "============================================================"
+  SHELL
+end

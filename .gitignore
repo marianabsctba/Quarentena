@@ -1,0 +1,29 @@
+# Godot 4
+.godot/
+/android/
+export_presets.cfg
+*.translation
+
+# Exportacoes
+/build/
+/dist/
+*.pck
+*.zip
+
+# Sistema
+.DS_Store
+Thumbs.db
+*.tmp
+*.log
+
+# Editores
+.idea/
+.vscode/
+*.swp
+
+__pycache__/
+*.pyc
+
+# Site do GitHub Pages (gerado)
+pages/saida/
+pages/node_modules/

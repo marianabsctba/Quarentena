@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Panthera Quarentena</title>
+<script src="vendor/three.min.js"></script>
+<style>
+  /* Quarentena: guia 3D que roda DENTRO da VM e abre as ferramentas reais.
+     Offline: three.js e fontes locais/do sistema. Preto e rosa neon. */
+  :root {
+    --preto:#050507; --fundo2:#0b080c; --painel:#120d13; --painel2:#17111a; --borda:#2e1f2b;
+    --texto:#f1e8ee; --fraca:#9a8894; --rosa:#ff2f9a; --rosaclaro:#ff79c0; --ambar:#ffcf6b; --verde:#46e39b; --azul:#86b8ff;
+    --disp:"Chakra Petch",system-ui,"DejaVu Sans",sans-serif; --corpo:system-ui,"DejaVu Sans",sans-serif; --mono:ui-monospace,"DejaVu Sans Mono",monospace;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{height:100%}
+  body{margin:0;font-family:var(--corpo);color:var(--texto);background:var(--preto);overflow:hidden}
+  button{font-family:var(--mono);cursor:pointer}
+  button:focus-visible{outline:2px solid var(--ambar);outline-offset:2px}
+
+  #mundo{position:fixed;inset:0}
+  #palco{position:absolute;inset:0}
+  #palco canvas{display:block;width:100%;height:100%}
+  .lockup{position:absolute;left:18px;top:16px;z-index:3;display:flex;gap:10px;align-items:center;pointer-events:none}
+  .lockup img{width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(255,47,154,.8))}
+  .lockup .nome{font-family:var(--disp);font-weight:700;letter-spacing:.14em;font-size:17px;line-height:1.05}
+  .lockup .setor{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--rosaclaro)}
+  .hud-baixo{position:absolute;left:0;right:0;bottom:0;z-index:3;padding:18px;display:flex;flex-direction:column;align-items:center;gap:12px;background:linear-gradient(0deg,rgba(5,5,7,.9),transparent)}
+  .fala-mundo{max-width:620px;text-align:center}
+  .fala-mundo .q{font-family:var(--disp);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--rosaclaro)}
+  .fala-mundo .t{font-size:17px;margin-top:4px;line-height:1.5}
+  .btn-rosa{font-size:15px;font-weight:700;color:#120207;background:var(--rosa);border:none;border-radius:10px;padding:13px 22px;letter-spacing:.02em;box-shadow:0 0 24px -6px var(--rosa)}
+  .btn-rosa:hover{filter:brightness(1.08)}
+  .toque{position:absolute;right:16px;top:18px;z-index:3;font-family:var(--mono);font-size:11px;color:var(--fraca);pointer-events:none}
+
+  #estacao{position:fixed;inset:0;z-index:10;background:radial-gradient(900px 500px at 70% -10%,#180712 0%,transparent 60%),var(--fundo2);display:none;flex-direction:column}
+  #estacao.on{display:flex}
+  .topo{display:flex;align-items:center;gap:12px;padding:10px 14px;background:#0b0810;border-bottom:1px solid var(--borda);flex-wrap:wrap}
+  .topo img{width:30px;height:30px;object-fit:contain;filter:drop-shadow(0 0 6px rgba(255,47,154,.8))}
+  .topo .marca{font-family:var(--disp);font-weight:700;letter-spacing:.1em;font-size:14px}
+  .topo .marca small{display:block;font-size:9px;letter-spacing:.2em;color:var(--rosaclaro);font-weight:500}
+  .topo .chips{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .chip{font-family:var(--mono);font-size:10.5px;padding:4px 9px;border:1px solid var(--borda);border-radius:6px;color:var(--fraca)}
+  .chip.ok{color:var(--verde);border-color:rgba(70,227,155,.4)}
+  .btn-ghost{font-size:12px;color:var(--rosaclaro);background:transparent;border:1px solid var(--borda);border-radius:7px;padding:7px 11px}
+  .sel-caso{font-family:var(--mono);font-size:12px;background:#190c14;color:var(--rosaclaro);border:1px solid var(--borda);border-radius:7px;padding:6px 8px}
+
+  .area{flex:1;min-height:0;display:grid;grid-template-columns:186px 1fr;gap:0}
+  .dock{border-right:1px solid var(--borda);padding:12px;display:flex;flex-direction:column;gap:7px;overflow-y:auto}
+  .dock-tit{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--fraca);margin-bottom:4px}
+  .toolbtn{text-align:left;font-family:var(--corpo);font-size:13px;background:var(--painel2);border:1px solid var(--borda);border-radius:8px;padding:9px 10px;color:var(--texto);cursor:pointer}
+  .toolbtn small{display:block;font-family:var(--mono);font-size:9.5px;color:var(--fraca);margin-top:2px}
+  .toolbtn:hover{border-color:var(--rosa)}
+  .toolbtn.ativo{border-color:var(--rosa);color:#fff;background:#190c14}
+  .toolbtn.pede{border-color:var(--ambar);color:var(--ambar);animation:pulso 1.4s ease-in-out infinite}
+  @keyframes pulso{0%,100%{box-shadow:0 0 0 0 rgba(255,207,107,0)}50%{box-shadow:0 0 0 3px rgba(255,207,107,.3)}}
+
+  .central{padding:16px;overflow:hidden;display:flex;flex-direction:column;min-height:0}
+  .arquivo{font-family:var(--mono);font-size:13px;color:var(--fraca);margin-bottom:10px}
+  .arquivo b{color:var(--ambar)}
+  .janela{flex:1;min-height:0;background:#08060a;border:1px solid var(--borda);border-radius:12px;display:flex;flex-direction:column;overflow:hidden}
+  .janela .barra{display:flex;align-items:center;gap:8px;padding:9px 12px;background:#140b12;border-bottom:1px solid var(--borda)}
+  .janela .barra .tt{font-family:var(--disp);font-weight:600;font-size:13px}
+  .janela .barra .real{font-family:var(--mono);font-size:10.5px;color:var(--azul);margin-left:6px}
+  .corpo-janela{flex:1;min-height:0;overflow:auto;padding:12px}
+  .saida{font-family:var(--mono);font-size:12.5px;white-space:pre;color:var(--azul);line-height:1.5;margin:0}
+  .abrir-dica{color:var(--fraca);font-size:14px;padding:24px 14px;text-align:center;line-height:1.6}
+  .abrir-dica b{color:var(--ambar)}
+  .abrir-dica .status{color:var(--verde);font-family:var(--mono);font-size:13px;margin-top:10px}
+
+  .guia{display:flex;gap:12px;margin-top:12px}
+  .guia-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px}
+  .mentor{background:var(--painel);border:1px solid var(--borda);border-left:3px solid var(--rosa);border-radius:11px;padding:13px;display:flex;gap:11px}
+  .mentor .av{flex:none;width:36px;height:36px;border-radius:50%;background:#1a0b14;border:1px solid var(--rosa);display:grid;place-items:center;color:var(--rosaclaro);font-family:var(--disp);font-weight:700}
+  .mentor .q{font-family:var(--disp);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--rosaclaro)}
+  .mentor .t{font-size:14.5px;line-height:1.5;margin-top:2px}
+  .passo{font-family:var(--mono);font-size:11px;color:var(--fraca)}
+  .responder{background:var(--painel);border:1px solid var(--borda);border-radius:11px;padding:13px}
+  .responder label{font-family:var(--mono);font-size:11px;color:var(--rosaclaro)}
+  .linha-resp{display:flex;gap:8px;margin-top:8px}
+  .linha-resp input{flex:1;min-width:0;font-family:var(--mono);font-size:16px;color:var(--azul);background:#0b080e;border:1px solid var(--borda);border-radius:8px;padding:9px 11px}
+  .linha-resp input:focus{outline:none;border-color:var(--rosa)}
+  .linha-resp button{font-size:13px;font-weight:700;color:#120207;background:var(--rosa);border:none;border-radius:8px;padding:0 15px}
+  .retorno{font-family:var(--mono);font-size:12.5px;margin-top:9px;min-height:1.2em;line-height:1.5}
+  .retorno.ok{color:var(--verde)} .retorno.erro{color:var(--rosaclaro)}
+  .dicabtn{font-size:12px;color:var(--ambar);background:transparent;border:1px dashed var(--borda);border-radius:7px;padding:7px 10px;margin-top:8px}
+  .btn-prox{font-size:13px;font-weight:700;color:#120207;background:var(--verde);border:none;border-radius:8px;padding:9px 14px;margin-top:10px}
+  .ferramenta{width:270px;flex:none;align-self:flex-start;background:var(--painel);border:1px solid var(--borda);border-left:3px solid var(--ambar);border-radius:11px;padding:12px}
+  .ferramenta .q{font-family:var(--disp);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ambar)}
+  .ferramenta .fnome{font-family:var(--disp);font-weight:700;font-size:16px;margin-top:3px}
+  .ferramenta .freal{font-family:var(--mono);font-size:11.5px;color:var(--azul);margin-top:1px}
+  .ferramenta .foque{font-size:13px;color:var(--texto);margin-top:6px;line-height:1.45}
+
+  .trilha{display:flex;gap:8px;padding:10px 16px;border-top:1px solid var(--borda);overflow-x:auto}
+  .passoc{flex:none;font-family:var(--mono);font-size:11px;padding:6px 11px;border:1px solid var(--borda);border-radius:999px;color:var(--fraca);white-space:nowrap;background:transparent;cursor:pointer}
+  .passoc.atual{border-color:var(--rosa);color:var(--rosaclaro)}
+  .passoc.feito{border-color:var(--verde);color:var(--verde)}
+
+  .carregando{position:absolute;inset:0;z-index:4;display:grid;place-items:center;color:var(--fraca);font-family:var(--mono);font-size:13px}
+  @media(max-width:820px){.area{grid-template-columns:1fr}.dock{flex-direction:row;flex-wrap:wrap;border-right:none;border-bottom:1px solid var(--borda)}.dock-tit{width:100%}.guia{flex-direction:column}.ferramenta{width:auto}}
+</style>
+</head>
+<body>
+
+<div id="mundo">
+  <div id="palco"><div class="carregando" id="carregando">ligando as luzes do setor...</div></div>
+  <div class="lockup">
+    <img src="panthera.webp" alt="Panthera Quarentena">
+    <div><div class="nome">PANTHERA QUARENTENA</div><div class="setor">Engenharia Reversa</div></div>
+  </div>
+  <div class="toque">mova o mouse para olhar a sala</div>
+  <div class="hud-baixo">
+    <div class="fala-mundo"><div class="q" id="quemFala">Veterano</div><div class="t" id="falaMundo">carregando o primeiro dia...</div></div>
+    <button class="btn-rosa" id="btnMundo">...</button>
+  </div>
+</div>
+
+<div id="estacao">
+  <div class="topo">
+    <img src="panthera.webp" alt="Panthera Quarentena">
+    <div class="marca">PANTHERA QUARENTENA<small>Engenharia Reversa</small></div>
+    <select id="selCaso" class="sel-caso" title="trocar de caso"></select>
+    <div class="chips">
+      <span class="chip ok">ambiente: isolado</span>
+      <span class="chip">rede: FakeNet</span>
+      <span class="chip ok">snapshot: salvo</span>
+      <button class="btn-ghost" id="btnVoltar">voltar à sala</button>
+    </div>
+  </div>
+  <div class="area">
+    <div class="dock" id="dock"></div>
+    <div class="central">
+      <div class="arquivo">caso em análise: <b id="nomeArq"></b> &middot; <span id="origemArq"></span></div>
+      <div class="janela">
+        <div class="barra"><span class="tt" id="toolTitulo">Ferramenta</span><span class="real" id="toolReal"></span></div>
+        <div class="corpo-janela"><div id="toolArea"></div></div>
+      </div>
+      <div class="guia">
+        <div class="guia-main">
+          <div class="mentor"><div class="av">V</div><div><div class="q">Veterano</div><div class="t" id="mentorT"></div></div></div>
+          <div class="passo" id="passoT"></div>
+          <div class="responder">
+            <label id="perguntaT"></label>
+            <div class="linha-resp"><input id="resp" autocomplete="off" spellcheck="false" placeholder="sua resposta..."><button id="btnResp">Enviar</button></div>
+            <div class="retorno" id="retorno"></div>
+            <button class="dicabtn" id="btnDica">Pedir dica</button>
+          </div>
+        </div>
+        <div class="ferramenta">
+          <div class="q">Ferramenta em uso</div>
+          <div class="fnome" id="ferrNome"></div>
+          <div class="freal" id="ferrReal"></div>
+          <div class="foque" id="ferrOque"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="trilha" id="trilha"></div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (s) { return document.querySelector(s); };
+  var CURSO = null, CASO = null, casoIdx = 0, passo = 0, feitos = {}, aberta = null, introI = 0;
+
+  function api(path, body) {
+    // Na versao do Pages nao ha servidor: o Linux roda na propria aba (navegador.js).
+    if (window.QuarentenaNavegador) return window.QuarentenaNavegador.api(path, body);
+    return fetch(path, {
+      method: body ? "POST" : "GET",
+      headers: { "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : undefined
+    }).then(function (r) { return r.json(); });
+  }
+  function toolById(id) { var t = CASO.tools; for (var i = 0; i < t.length; i++) if (t[i].id === id) return t[i]; return t[0]; }
+
+  // ---------- intro (primeiro dia) ----------
+  function mostrarIntro() {
+    var falas = CURSO.intro.falas;
+    $("#falaMundo").textContent = falas[introI];
+    var ultimo = introI >= falas.length - 1;
+    $("#btnMundo").textContent = ultimo ? "Ligar o computador" : "Continuar";
+    $("#btnMundo").onclick = ultimo ? entrarEstacao : function () { introI++; mostrarIntro(); };
+  }
+
+  // ---------- estacao ----------
+  function montarDock() {
+    var d = $("#dock"); d.innerHTML = "<div class='dock-tit'>Ferramentas</div>";
+    CASO.tools.forEach(function (f) {
+      var b = document.createElement("button");
+      b.className = "toolbtn"; b.dataset.id = f.id;
+      b.innerHTML = "";
+      var nome = document.createElement("div"); nome.textContent = f.nome; b.appendChild(nome);
+      var s = document.createElement("small"); s.textContent = f.real + (f.modo === "abrir" ? "  (abre o programa)" : ""); b.appendChild(s);
+      b.onclick = function () { abrirFerramenta(f.id); };
+      d.appendChild(b);
+    });
+  }
+
+  function marcarDock(ativoId, pedeId) {
+    $("#dock").querySelectorAll(".toolbtn").forEach(function (b) {
+      b.classList.toggle("ativo", b.dataset.id === ativoId);
+      b.classList.toggle("pede", pedeId != null && b.dataset.id === pedeId && b.dataset.id !== ativoId);
+    });
+  }
+
+  function setFerrCard(f) {
+    $("#toolTitulo").textContent = f.nome;
+    $("#toolReal").textContent = "= " + f.real;
+    $("#ferrNome").textContent = f.nome;
+    $("#ferrReal").textContent = "ferramenta real: " + f.real;
+    $("#ferrOque").textContent = f.oque;
+  }
+
+  function abrirFerramenta(id) {
+    aberta = id;
+    var f = toolById(id);
+    setFerrCard(f);
+    marcarDock(id, (CASO.passos[passo] || {}).tool);
+    if (f.modo === "abrir" && window.QuarentenaNavegador && window.QuarentenaNavegador.abrir(CASO.id, id, $("#toolArea"))) return;
+    if (f.modo === "abrir") {
+      $("#toolArea").innerHTML = "<div class='abrir-dica'>Abrindo o <b>" + f.nome + "</b> de verdade...<div class='status' id='st'>...</div></div>";
+      api("/api/abrir", { caso: CASO.id, tool: id }).then(function (r) {
+        $("#st").textContent = r.msg + (r.ok ? "  (procure a janela que abriu)" : "");
+      }).catch(function () { $("#st").textContent = "servidor local fora do ar."; });
+    } else {
+      $("#toolArea").innerHTML = "<div class='abrir-dica'>rodando <b>" + f.real + "</b>...</div>";
+      api("/api/exec", { caso: CASO.id, tool: id }).then(function (r) {
+        var pre = document.createElement("pre"); pre.className = "saida"; pre.textContent = r.saida || "(sem saída)";
+        $("#toolArea").innerHTML = ""; $("#toolArea").appendChild(pre);
+      }).catch(function () { $("#toolArea").innerHTML = "<div class='abrir-dica'>Não consegui falar com o servidor local. Rode: python3 servidor.py</div>"; });
+    }
+  }
+
+  function carregarPasso(n) {
+    passo = n; aberta = null;
+    var p = CASO.passos[n], f = toolById(p.tool);
+    $("#passoT").textContent = "Passo " + (n + 1) + " de " + CASO.passos.length + " . " + p.titulo;
+    $("#mentorT").textContent = p.instr;
+    $("#perguntaT").textContent = p.pergunta;
+    $("#retorno").textContent = ""; $("#retorno").className = "retorno";
+    $("#resp").value = ""; $("#resp").disabled = false;
+    setFerrCard(f);
+    marcarDock(null, p.tool);
+    $("#toolArea").innerHTML = "<div class='abrir-dica'>O veterano pediu: abra o <b>" + f.nome + "</b> na barra à esquerda" + (f.modo === "abrir" ? " (abre o programa de verdade)" : " (mostra a saída aqui)") + " e siga a instrução.</div>";
+    montarTrilha();
+  }
+
+  function montarTrilha() {
+    var t = $("#trilha"); t.innerHTML = "";
+    CASO.passos.forEach(function (p, i) {
+      var b = document.createElement("button"), cls = "passoc";
+      if (i === passo) cls += " atual";
+      if (feitos[i]) cls += " feito";
+      b.className = cls; b.textContent = (i + 1) + ". " + p.titulo;
+      b.onclick = function () { carregarPasso(i); };
+      t.appendChild(b);
+    });
+  }
+
+  function responder() {
+    var val = ($("#resp").value || "").trim();
+    var ret = $("#retorno");
+    if (val === "") { ret.className = "retorno erro"; ret.textContent = "Digite a resposta."; return; }
+    api("/api/responder", { caso: CASO.id, passo: CASO.passos[passo].id, resposta: val }).then(function (r) {
+      if (r.ok) {
+        ret.className = "retorno ok"; ret.textContent = r.msg;
+        $("#resp").disabled = true;
+        feitos[passo] = true; montarTrilha();
+        if (passo + 1 < CASO.passos.length) {
+          var b = document.createElement("button"); b.className = "btn-prox"; b.textContent = "Próximo passo  >";
+          b.onclick = function () { carregarPasso(passo + 1); };
+          ret.appendChild(document.createElement("br")); ret.appendChild(b);
+        } else if (casoIdx + 1 < CURSO.casos.length) {
+          var bc = document.createElement("button"); bc.className = "btn-prox"; bc.textContent = "Próximo caso  >>";
+          bc.onclick = function () { carregarCaso(casoIdx + 1); };
+          ret.appendChild(document.createElement("br")); ret.appendChild(bc);
+        }
+      } else {
+        ret.className = "retorno erro"; ret.textContent = r.msg;
+      }
+    }).catch(function () {
+      ret.className = "retorno erro"; ret.textContent = "Não consegui falar com o servidor local. Ele está rodando? (python3 servidor.py)";
+    });
+  }
+
+  function montarCasos() {
+    var s = $("#selCaso"); s.innerHTML = "";
+    CURSO.casos.forEach(function (c, i) {
+      var o = document.createElement("option"); o.value = i; o.textContent = c.nome + "  ·  " + c.nivel; s.appendChild(o);
+    });
+    s.value = casoIdx;
+    s.onchange = function () { carregarCaso(+s.value); };
+  }
+  function carregarCaso(idx) {
+    casoIdx = idx; CASO = CURSO.casos[idx]; passo = 0; feitos = {}; aberta = null;
+    $("#selCaso").value = idx;
+    $("#nomeArq").textContent = CASO.arquivo;
+    $("#origemArq").textContent = CASO.origem;
+    montarDock();
+    carregarPasso(0);
+  }
+  function entrarEstacao() {
+    $("#estacao").classList.add("on");
+    $("#mundo").style.display = "none";
+    rodando3d = false;
+    montarCasos();
+    carregarCaso(casoIdx);
+    setTimeout(function () { $("#resp").focus(); }, 80);
+  }
+  function voltarSala() {
+    $("#estacao").classList.remove("on");
+    $("#mundo").style.display = "";
+    rodando3d = true;
+    redimensionar();        // recalcula o tamanho do canvas (evita tela preta na volta)
+    requestAnimationFrame(laco);
+  }
+
+  $("#btnResp").addEventListener("click", responder);
+  $("#resp").addEventListener("keydown", function (e) { if (e.key === "Enter") responder(); });
+  $("#btnDica").addEventListener("click", function () {
+    $("#retorno").className = "retorno"; $("#retorno").textContent = "Dica: " + CASO.passos[passo].dica;
+  });
+  $("#btnVoltar").addEventListener("click", voltarSala);
+
+  // ================= cena 3D (o hub) =================
+  var aviso = $("#carregando");
+  var rodando3d = true;
+  var laco = function () {};
+  var redimensionar = function () {};
+  function iniciar3D() {
+    var palco = $("#palco");
+    var reduz = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
+    palco.appendChild(renderer.domElement);
+    var cena = new THREE.Scene(); cena.fog = new THREE.FogExp2(0x070308, 0.055);
+    var cam = new THREE.PerspectiveCamera(60, 1, 0.05, 100); cam.position.set(0, 1.18, 0.62);
+    var ROSA = 0xff2f9a, ROSACLARO = 0xff79c0;
+    function dim() { var w = palco.clientWidth, h = palco.clientHeight; renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
+    function matP(cor, asp, em, emE) { var m = new THREE.MeshStandardMaterial({ color: cor, roughness: asp === undefined ? 0.9 : asp, metalness: 0.1 }); if (em !== undefined) { m.emissive = new THREE.Color(em); m.emissiveIntensity = emE || 1; } return m; }
+    function cx(sx, sy, sz, mat, x, y, z) { var mi = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), mat); mi.position.set(x, y, z); cena.add(mi); return mi; }
+    var matParede = matP(0x0e0b10, 1.0); matParede.side = THREE.BackSide; cx(10, 4, 10, matParede, 0, 2, -2);
+    cx(10, 0.02, 10, matP(0x0a080c, 1.0), 0, 0, -2);
+    var neon = new THREE.MeshBasicMaterial({ color: ROSA });
+    cx(8.4, 0.04, 0.04, neon, 0, 3.7, -6.95); cx(0.04, 0.04, 8.4, neon, -4.95, 3.7, -2); cx(0.04, 0.04, 8.4, neon, 4.95, 3.7, -2);
+    cx(2.8, 0.08, 1.1, matP(0x141016, 0.6), 0, 0.75, -0.4);
+    cx(0.08, 0.72, 0.08, matP(0x0e0a10, 0.7), -1.3, 0.37, -0.1); cx(0.08, 0.72, 0.08, matP(0x0e0a10, 0.7), 1.3, 0.37, -0.1);
+    cx(1.06, 0.016, 0.42, matP(0x060509, 0.6), 0, 0.776, -0.12); cx(1.02, 0.03, 0.38, matP(0x0b0810, 0.5), 0, 0.790, -0.12);
+    var glowTec = new THREE.Mesh(new THREE.PlaneGeometry(0.94, 0.33), new THREE.MeshBasicMaterial({ color: ROSA }));
+    glowTec.rotation.x = -Math.PI / 2; glowTec.position.set(0, 0.808, -0.12); cena.add(glowTec);
+    var matKey = matP(0x1a1522, 0.5);
+    var u = 0.06, g = 0.006, kd = 0.052, rowgap = 0.008, z0 = -0.12 - (5 * (kd + rowgap) - rowgap) / 2 + kd / 2;
+    function tecla(px, pz, w) { var m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.024, kd), matKey); m.position.set(px, 0.822, pz); cena.add(m); }
+    function linha(z, mults) { var W = (mults.length - 1) * g, i; for (i = 0; i < mults.length; i++) W += mults[i] * u + (mults[i] - 1) * g; var x = -W / 2; for (i = 0; i < mults.length; i++) { var w = mults[i] * u + (mults[i] - 1) * g; tecla(x + w / 2, z, w); x += w + g; } }
+    var uni = []; for (var q = 0; q < 14; q++) uni.push(1);
+    linha(z0, uni); linha(z0 + (kd + rowgap), uni); linha(z0 + 2 * (kd + rowgap), uni); linha(z0 + 3 * (kd + rowgap), uni); linha(z0 + 4 * (kd + rowgap), [1.4, 1.2, 1.2, 5.6, 1.2, 1.2, 1.4]);
+    cx(0.34, 0.004, 0.30, matP(0x0a0810, 0.95), 0.74, 0.780, -0.05);
+    var gm = new THREE.Group(); gm.position.set(0.74, 0.792, -0.05);
+    var corpoM = new THREE.Mesh(new THREE.SphereGeometry(0.072, 24, 16), matP(0x141019, 0.3)); corpoM.scale.set(1, 0.5, 1.6); corpoM.position.y = 0.028; gm.add(corpoM);
+    var scroll = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.013, 0.016, 12), new THREE.MeshBasicMaterial({ color: ROSACLARO })); scroll.rotation.z = Math.PI / 2; scroll.position.set(0, 0.066, -0.052); gm.add(scroll);
+    cena.add(gm);
+    function tela(w, h) { var c = document.createElement("canvas"); c.width = w; c.height = h; return { c: c, ctx: c.getContext("2d"), tex: new THREE.CanvasTexture(c) }; }
+    var tHex = tela(512, 320);
+    function drawHex(t) { var ctx = tHex.ctx; ctx.fillStyle = "#08060a"; ctx.fillRect(0, 0, 512, 320); ctx.fillStyle = "#1a0c16"; ctx.fillRect(0, 0, 512, 26); ctx.fillStyle = "#ff2f9a"; ctx.font = "bold 13px monospace"; ctx.textBaseline = "middle"; ctx.fillText("PANTHERA QUARENTENA // terminal", 10, 13); ctx.font = "12px monospace"; ctx.textBaseline = "top"; var d = Math.floor(t * 8) % 16; for (var li = 0; li < 20; li++) { var base = (li + d) * 16; ctx.fillStyle = "#5a4f58"; ctx.fillText(("0000" + base.toString(16).toUpperCase()).slice(-4), 10, 34 + li * 14); var ln = ""; for (var b = 0; b < 16; b++) ln += ("0" + (((base * 7 + b * 31 + 77) & 255).toString(16).toUpperCase())).slice(-2) + " "; ctx.fillStyle = li === 3 ? "#ff79c0" : "#b89fae"; ctx.fillText(ln, 52, 34 + li * 14); } tHex.tex.needsUpdate = true; }
+    function monitor(x, tx) { cx(1.18, 0.72, 0.05, matP(0x0b0810, 0.6), x, 1.2, -0.85); var s = new THREE.Mesh(new THREE.PlaneGeometry(1.08, 0.62), new THREE.MeshBasicMaterial({ map: tx.tex })); s.position.set(x, 1.2, -0.822); cena.add(s); cx(0.1, 0.38, 0.1, matP(0x0b0810, 0.6), x, 0.95, -0.9); var l = new THREE.PointLight(ROSA, 0.5, 4, 2); l.position.set(x, 1.2, -0.4); cena.add(l); }
+    monitor(-0.62, tHex); monitor(0.62, tHex);
+    var loader = new THREE.TextureLoader();
+    var texLogo = loader.load("panthera.webp", function () { if (aviso) aviso.hidden = true; }, undefined, function () { if (aviso) aviso.hidden = true; });
+    texLogo.encoding = THREE.sRGBEncoding;
+    var logo = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 2.65), new THREE.MeshBasicMaterial({ map: texLogo, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    logo.position.set(0, 2.55, -6.9); cena.add(logo);
+    cx(0.9, 2.4, 0.7, matP(0x0c0a0f, 0.7), 3.7, 1.2, -4.6);
+    cena.add(new THREE.AmbientLight(0x241019, 0.7));
+    var pc = new THREE.PointLight(ROSA, 1.6, 12, 2); pc.position.set(0, 3.4, -1.5); cena.add(pc);
+    var pf = new THREE.PointLight(0x4466aa, 0.5, 12, 2); pf.position.set(-3, 2.5, 1.5); cena.add(pf);
+    var mx = 0, my = 0;
+    palco.addEventListener("pointermove", function (e) { var r = palco.getBoundingClientRect(); mx = ((e.clientX - r.left) / r.width - 0.5) * 2; my = ((e.clientY - r.top) / r.height - 0.5) * 2; });
+    palco.addEventListener("pointerleave", function () { mx = 0; my = 0; });
+    dim(); window.addEventListener("resize", dim); redimensionar = dim;
+    setTimeout(function () { if (aviso) aviso.hidden = true; }, 1200);
+    var t0 = performance.now();
+    laco = function (ts) {
+      if (!rodando3d) return;
+      var t = (ts - t0) / 1000; drawHex(t);
+      cam.position.y = 1.18 + (reduz ? 0 : Math.sin(t * 1.1) * 0.008);
+      cam.lookAt(new THREE.Vector3(mx * 1.4, 1.0 - my * 0.9, -0.85));
+      renderer.render(cena, cam); requestAnimationFrame(laco);
+    };
+    requestAnimationFrame(laco);
+  }
+
+  // ---------- boot ----------
+  if (window.THREE) iniciar3D(); else if (aviso) aviso.textContent = "3D indisponível; o resto funciona.";
+  api("/api/curso").then(function (c) {
+    CURSO = c; casoIdx = 0; CASO = c.casos[0];
+    $("#quemFala").textContent = CURSO.intro.titulo;
+    introI = 0; mostrarIntro();
+  }).catch(function () {
+    $("#falaMundo").textContent = "Não consegui falar com o servidor local. Rode: python3 servidor.py";
+    $("#btnMundo").textContent = "tentar de novo"; $("#btnMundo").onclick = function () { location.reload(); };
+  });
+})();
+</script>
+</body>
+</html>

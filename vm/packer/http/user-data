@@ -1,0 +1,17 @@
+#cloud-config
+autoinstall:
+  version: 1
+  locale: en_US.UTF-8
+  keyboard:
+    layout: br
+  identity:
+    hostname: quarentena
+    username: analista
+    # senha: analista  (hash SHA-512)
+    password: "$6$e0HTVNnwThl/PbYq$71w4tFmfEskti3leP5dcembpqJiwKMbeLQiYAFV540oOVMbiajtLbPPVi1Zas2W/ARW.7vwQZ1uOhMtQgkujy0"
+  ssh:
+    install-server: true
+    allow-pw: true
+  late-commands:
+    - echo 'analista ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/analista
+    - chmod 440 /target/etc/sudoers.d/analista

@@ -1,0 +1,4 @@
+# Scripts rodam em Linux (a VM): forca quebra de linha LF ao clonar,
+# senao o bash quebra com \r (CRLF do Windows).
+*.sh text eol=lf
+*.py text eol=lf
