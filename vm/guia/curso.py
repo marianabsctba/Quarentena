@@ -311,7 +311,7 @@ CASOS = [
             {"id": "p1", "titulo": "Triagem", "tool": "triagem",
              "instr": "Rode a Triagem. Isso não é ELF nem script: de que linguagem é esse bytecode?",
              "pergunta": "De que linguagem é esse bytecode?", "resposta": "python", "contem": "python",
-             "dica": "A extensão .pyc entrega. O file costuma dizer 'byte-compiled'; numa versão antiga, pode dizer só 'data'.",
+             "dica": "A extensão .pyc entrega, e o file confirma: 'Byte-compiled Python module'.",
              "sucesso": "Python compilado. Não é código de máquina: é bytecode, feito pra máquina virtual do Python. E bytecode conta muita coisa pra quem sabe perguntar."},
             {"id": "p2", "titulo": "A fofoca, de novo", "tool": "strings",
              "instr": "Strings funciona aqui também. Sem rodar nada, ache o nome da função que parece decidir pra onde o agente fala.",
@@ -837,7 +837,7 @@ CASOS = [
         "tools": ["hex", "terminal", "yara"],
         "passos": [
             {"id": "p1", "titulo": "Bytes sem rótulo", "tool": "hex",
-             "instr": "Esse arquivo não tem cabeçalho nenhum (o 'file' só diz 'data' ou chuta um formato errado). São bytes de código de máquina cru: shellcode. Abra o Visor Hex. Qual o primeiro byte, logo depois do endereço 00000000:?",
+             "instr": "Esse arquivo não tem cabeçalho nenhum (o 'file' só diz 'data'). São bytes de código de máquina cru: shellcode. Abra o Visor Hex. Qual o primeiro byte, logo depois do endereço 00000000:?",
              "pergunta": "Qual o primeiro byte? (hex)", "resposta": "b8", "contem": "b8",
              "dica": "Pule o endereço 00000000:. O primeiro par de dígitos depois dele é o primeiro byte.",
              "sucesso": "0xb8. Em x86, 0xB8 é 'mov eax, imm32'. Reconhecer opcodes comuns de cara (B8 mov, E8 call, C3 ret, 0F05 syscall) ajuda a confirmar que é código, não dado."},

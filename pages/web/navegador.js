@@ -105,6 +105,16 @@ window.QuarentenaNavegador = (function () {
     return t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "").toLowerCase();
   }
 
+  // Numero e hex valem inteiros (2 nao aceita 12) e sim/nao vale sozinho
+  // (nao aceita "simples" nem "sim/nao"). O resto pode vir no meio da frase.
+  function bate(dado, alvo) {
+    var a = normalizar(alvo);
+    if (a === "sim" || a === "nao") return dado.replace(/[^a-z]/g, "") === a;
+    if (/^\d+$/.test(a)) return new RegExp("(^|\\D)" + a + "(\\D|$)").test(dado);
+    if (/^[0-9a-f]+$/.test(a)) return new RegExp("(^|[^0-9a-f])" + a + "([^0-9a-f]|$)").test(dado);
+    return dado.indexOf(a) >= 0;
+  }
+
   function conferir(c, passoId, resposta) {
     var p = c.passos.filter(function (x) { return x.id === passoId; })[0];
     if (!p) return { ok: false, msg: "passo desconhecido." };
@@ -114,7 +124,7 @@ window.QuarentenaNavegador = (function () {
         : { ok: false, msg: "Não bate com o hash real da amostra. Rode 'sha256sum' e cole exatamente." };
     }
     var contem = [].concat(p.contem || []);
-    var ok = dado === normalizar(p.resposta) || contem.some(function (x) { return dado.indexOf(normalizar(x)) >= 0; });
+    var ok = dado === normalizar(p.resposta) || contem.some(function (x) { return bate(dado, x); });
     return ok ? { ok: true, msg: p.sucesso } : { ok: false, msg: "Ainda não. Use a ferramenta indicada e olhe com calma." };
   }
 
