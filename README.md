@@ -54,4 +54,7 @@ instalar numa VM própria, veja [vm/README.md](vm/README.md).
 
 ## Licença
 
-MIT. Veja [LICENSE](LICENSE).
+O código do jogo é MIT. Veja [LICENSE](LICENSE). O Linux que roda no navegador
+leva programas de outros projetos, sob as licenças deles (GPL e outras): a lista,
+com versões e código-fonte, sai a cada build na
+[página de licenças](https://marianabsctba.github.io/Panthera_Quarentena/licencas.html).

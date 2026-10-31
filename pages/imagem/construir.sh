@@ -21,7 +21,7 @@ trap desmontar EXIT
 
 desmontar
 rm -rf "$TRAB"
-mkdir -p "$ROOTFS" "$AUX"
+mkdir -p "$ROOTFS" "$AUX" "$RAIZ/pages/saida"
 
 echo "[1/6] Alpine $ALPINE x86"
 curl -fsSL -o "$TRAB/mini.tar.gz" \
@@ -83,6 +83,14 @@ chroot "$ROOTFS" /bin/sh -c '
 rm -rf "$ROOTFS"/var/cache/apk/* "$ROOTFS"/lib/modules/*/kernel/drivers/{gpu,net/wireless,media,infiniband,scsi} \
   "$ROOTFS"/usr/share/man "$ROOTFS"/usr/share/doc
 desmontar
+
+# A pagina de licencas sai do que a imagem leva de fato. O commit e o do aports.
+curl -fsSL "https://dl-cdn.alpinelinux.org/alpine/v${ALPINE%.*}/main/x86/APKINDEX.tar.gz" \
+  | tar xzO APKINDEX > "$TRAB/main.idx"
+awk 'FNR==NR { if (/^P:/) main[substr($0,3)]=1; next }
+  /^[PVoLcU]:/ { d[substr($0,1,1)]=substr($0,3) }
+  /^$/ { if (d["P"]!="") print d["P"] "\t" d["V"] "\t" d["o"] "\t" d["L"] "\t" d["c"] "\t" (d["P"] in main ? "main" : "community") "\t" d["U"]; delete d }
+' "$TRAB/main.idx" "$ROOTFS/lib/apk/db/installed" > "$RAIZ/pages/saida/pacotes.tsv"
 
 echo "[5/6] Empacotando"
 # Sem o "./" na frente: o fs2json monta a arvore pelos nomes do tar.
